@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Base Ten — On-chain stock portfolio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="glow glow-one"></div><div class="glow glow-two"></div>
+    <header class="shell nav">
+      <a class="brand" href="#top"><span class="brand-mark">B</span> base ten</a>
+      <nav><a href="#portfolio">Portfolio</a><a href="#how">How it works</a><a href="#holdings">Holdings</a></nav>
+      <button class="ghost wallet-button">Connect wallet</button>
+    </header>
+    <main id="top">
+      <section class="shell hero">
+        <div class="hero-copy">
+          <p class="eyebrow">BASE MAINNET · USDC PORTFOLIO</p>
+          <h1>Own your allocation.<br /><em>Withdraw any time.</em></h1>
+          <p class="lede">Deposit USDC on Base. Your position is tracked on-chain and allocated across ten tokenized equities at the weights below.</p>
+          <div class="hero-actions"><a class="button" href="#deposit">Start with USDC <span>→</span></a><a class="text-link" href="#portfolio">See allocation ↓</a></div>
+          <p class="network"><span class="dot"></span> Built for Base mainnet</p>
+        </div>
+        <aside class="balance-card" id="holdings">
+          <div class="card-top"><span>YOUR PORTFOLIO</span><span class="status">NOT CONNECTED</span></div>
+          <div class="balance">$0.00</div><p class="muted">Connect a wallet to see your on-chain shares.</p>
+          <div class="card-rule"></div>
+          <div class="metric"><span>Total USDC deposited</span><strong id="tvl">$0.00</strong></div>
+          <div class="metric"><span>Withdrawable value</span><strong>$0.00</strong></div>
+          <button class="wide ghost wallet-button">Connect wallet</button>
+        </aside>
+      </section>
+      <section class="shell deposit-wrap" id="deposit">
+        <div class="deposit-copy"><p class="eyebrow">DEPOSIT</p><h2>Put your USDC to work.</h2><p>You keep a proportional vault share. Withdraw it whenever you choose.</p></div>
+        <div class="deposit-panel">
+          <label for="amount">AMOUNT</label><div class="amount-field"><span>$</span><input id="amount" type="number" min="1" placeholder="1.00" /><b>USDC</b></div>
+          <p class="minimum">Minimum investment <b>1 USDC</b></p><p class="notice">On your first deposit, Glider creates one personal Base smart account under the <a class="strategy-link" href="https://glider.fi/strategy/01KZY1G56YFYWKS8AH0PR1YMQX" target="_blank" rel="noreferrer">selected strategy</a>. Every later deposit uses that same account.</p>
+          <p class="minimum" id="deposit-destination">Glider will provide your personal Base smart-account address before any USDC is sent.</p>
+          <button class="wide button" id="invest-usdc">Invest USDC</button>
+          <button class="wide ghost withdraw-button" id="rebalance-all" disabled>Rebalance investment</button>
+        </div>
+      </section>
+      <section class="shell withdrawal" id="withdraw">
+        <div class="withdraw-copy"><p class="eyebrow">WITHDRAW</p><h2>Take one stock—or your whole position.</h2><p>Choose a single token to withdraw directly to your wallet. Withdrawing a stock pauses reward eligibility until you rebalance your portfolio.</p><p class="reward-state"><span></span> Rewards require rebalancing after a stock withdrawal</p></div>
+        <div class="withdraw-panel">
+          <label for="withdraw-asset">ASSET TO WITHDRAW</label><select id="withdraw-asset"><option>Connect wallet to load assets</option></select>
+          <label for="withdraw-amount">AMOUNT</label><div class="amount-field"><input id="withdraw-amount" type="number" min="0" step="any" placeholder="0.00" /><b id="withdraw-symbol">USDC</b></div>
+          <p class="minimum" id="withdraw-balance">Connect your wallet to view your withdrawable balance.</p>
+          <button class="wide ghost withdraw-button" id="withdraw-submit" disabled>Connect wallet to withdraw</button>
+        </div>
+      </section>
+      <section class="shell portfolio" id="portfolio">
+        <div class="section-heading"><div><p class="eyebrow">GLIDER STRATEGY</p><h2 id="strategy-name">Loading live allocation…</h2></div><p id="strategy-status">Reading the allocation from your selected Glider strategy.</p></div>
+        <div class="allocation-grid" id="allocation-grid"></div>
+      </section>
+      <section class="shell leaderboard" id="leaderboard">
+        <div class="leader-heading"><div><p class="eyebrow">COMMUNITY</p><h2>Built by holders.</h2></div><div class="member-count"><span id="member-count">0</span><small>portfolio members</small><b id="community-tvl">$0.00 deposited</b></div></div>
+        <div class="leader-table"><div class="leader-row head"><span>RANK</span><span>WALLET</span><span>PORTFOLIO VALUE</span></div><div class="empty-leaders" id="leader-empty">No public vault positions yet. Be among the first.</div><div id="leader-rows"></div></div>
+        <p class="leader-note">Only the wallet address and value held in this vault are displayed. Wallets appear shortened for privacy.</p>
+      </section>
+      <section class="shell how" id="how">
+        <p class="eyebrow">HOW IT WORKS</p><div class="steps"><article><span>01</span><h3>Deposit USDC</h3><p>Connect your Base wallet and approve the exact USDC amount.</p></article><article><span>02</span><h3>Receive vault shares</h3><p>The contract records your proportional ownership—visible in your wallet dashboard.</p></article><article><span>03</span><h3>Withdraw freely</h3><p>Redeem your shares whenever you want, subject to available portfolio liquidity.</p></article></div>
+      </section>
+    </main>
+    <footer class="shell"><span>BASE TEN</span><span>Non-custodial portfolio interface · Base mainnet</span><span>Not investment advice</span></footer>
+    <script src="config.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
