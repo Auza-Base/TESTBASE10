@@ -20,7 +20,7 @@ async function glider(endpoint, payload, method = 'POST') {
 }
 function address(value) { return /^0x[a-fA-F0-9]{40}$/.test(value || ''); }
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed.' });
   try {
     const route = String(req.query.route || '').replace(/^\//, '');
@@ -65,4 +65,4 @@ export default async function handler(req, res) {
     if (route === 'withdraw/submit') return res.status(202).json(await glider(`/portfolios/${body.portfolioId}/withdraw`, { message: body.message, signature: body.signature }));
     throw new Error('Unknown Glider request.');
   } catch (error) { return res.status(400).json({ success: false, error: error.message || 'Request failed.' }); }
-}
+};
