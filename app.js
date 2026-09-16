@@ -28,7 +28,13 @@ async function connectWallet() {
 document.querySelectorAll('.wallet-button').forEach(button => button.addEventListener('click', connectWallet));
 
 const apiBase = window.BASE_TEN_CONFIG?.apiBase || '/api';
-const post = async (path, payload) => { const response = await fetch(`${apiBase}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); const result = await response.json(); if (!response.ok || result.success === false) throw new Error(result.error?.message || result.error || 'Request failed'); return result; };
+const post = async (path, payload) => {
+  const route = path.replace(/^\/glider\/?/, '');
+  const response = await fetch(`${apiBase}/glider`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, route }) });
+  const result = await response.json();
+  if (!response.ok || result.success === false) throw new Error(result.error?.message || result.error || 'Request failed');
+  return result;
+};
 const knownAssets = Object.fromEntries(portfolio.map(([symbol, , name]) => [symbol.toLowerCase(), { symbol, name }]));
 const knownAssetByAddress = {
   '0xb20000000000000000000078ee7ce2fe4908108c': knownAssets.nvdac,

@@ -23,7 +23,7 @@ function address(value) { return /^0x[a-fA-F0-9]{40}$/.test(value || ''); }
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed.' });
   try {
-    const route = String(req.query.route || '').replace(/^\//, '');
+    const route = String(req.body?.route || req.query.route || '').replace(/^\//, '');
     const body = req.body || {};
     if (route === 'strategy') return res.json(await glider(`/strategies/${strategyId}`, undefined, 'GET'));
     if (route === 'signature') {

@@ -1,5 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/api/glider/:path*", "destination": "/api/glider?route=/:path*" }
-  ]
-}
