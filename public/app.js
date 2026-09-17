@@ -4,38 +4,130 @@ const portfolio = [
   ['MSTRc', 5, 'Strategy'], ['SNDKc', 3, 'SanDisk'], ['SPCXc', 5, 'SpaceX'], ['TSLAc', 7, 'Tesla']
 ];
 const grid = document.querySelector('#allocation-grid');
-grid.innerHTML = portfolio.map(([ticker, weight, name]) => `<article class="asset"><div class="asset-weight">${weight}%</div><div class="asset-ticker">${ticker}</div><div class="asset-name">${name}</div><div class="asset-bar" style="width:${weight * 5.55}%"></div></article>`).join('');
+const localLogos = { NVDAc: 'nvidia.com', AAPLc: 'apple.com', GOOGLc: 'google.com', METAc: 'meta.com', AMZNc: 'amazon.com', MSFTc: 'microsoft.com', MSTRc: 'strategy.com', SNDKc: 'sandisk.com', SPCXc: 'spacex.com', TSLAc: 'tesla.com' };
+const companyLogo = domain => `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+grid.innerHTML = portfolio.map(([ticker, weight, name]) => `<article class="asset"><div class="asset-top"><img class="asset-logo" src="${companyLogo(localLogos[ticker])}" alt="${name} logo" /><div class="asset-weight">${weight}%</div></div><div class="asset-ticker">${ticker}</div><div class="asset-name">${name}</div><div class="asset-bar" style="width:${weight * 5.55}%"></div></article>`).join('');
 const assetPicker = document.querySelector('#withdraw-asset');
+const withdrawAmount = document.querySelector('#withdraw-amount');
+const withdrawMax = document.querySelector('#withdraw-max');
+const withdrawLogo = document.querySelector('#withdraw-logo');
+const withdrawHint = document.querySelector('#withdraw-hint');
+const toggleComposition = document.querySelector('#toggle-composition');
+const compositionContent = document.querySelector('#composition-content');
+toggleComposition.addEventListener('click', () => {
+  const hidden = compositionContent.hidden = !compositionContent.hidden;
+  toggleComposition.textContent = hidden ? 'Show ↓' : 'Hide ↑';
+  toggleComposition.setAttribute('aria-expanded', String(!hidden));
+});
 let withdrawAssets = [];
 assetPicker.addEventListener('change', () => {
   const asset = withdrawAssets.find(item => item.assetId === assetPicker.value);
   document.querySelector('#withdraw-symbol').textContent = asset?.symbol || 'USDC';
   document.querySelector('#withdraw-balance').textContent = asset ? `Available: ${asset.balance} ${asset.symbol}` : 'Select an indexed portfolio asset.';
+  if (asset) {
+    const contract = asset.assetId.split('erc20:')[1]?.toLowerCase();
+    const known = knownAssetByAddress[contract] || knownAssets[String(asset.symbol || '').toLowerCase()];
+    withdrawLogo.src = known?.logo || (String(asset.symbol).toUpperCase() === 'USDC' ? 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=040' : 'https://www.google.com/s2/favicons?domain=glider.fi&sz=128');
+    withdrawLogo.alt = `${asset.symbol} logo`;
+  }
+  // The user chooses the amount. Only the MAX button may fill the full balance.
+  withdrawAmount.value = '';
+  withdrawAmount.placeholder = asset ? `Amount of ${asset.symbol}` : 'Select an asset first';
+  withdrawHint.textContent = asset ? `Enter ${asset.symbol} token units here — not a USDC dollar amount. Available: ${asset.balance} ${asset.symbol}.` : 'Select an indexed asset first.';
+  withdrawMax.disabled = !asset;
+});
+withdrawMax.addEventListener('click', () => {
+  const asset = withdrawAssets.find(item => item.assetId === assetPicker.value);
+  if (!asset) return;
+  withdrawAmount.value = asset.balance;
+  document.querySelector('#withdraw-balance').textContent = `Max selected: ${asset.balance} ${asset.symbol}`;
 });
 
+const walletDialog = document.querySelector('#wallet-dialog');
+const walletStatus = document.querySelector('#wallet-status');
+let activeProvider;
 let connectedAddress;
-async function connectWallet() {
-  if (!window.ethereum) { alert('Install a Base-compatible wallet such as Coinbase Wallet or MetaMask to continue.'); return; }
+const walletNames = { metamask: 'MetaMask', coinbase: 'Coinbase Wallet', rabby: 'Rabby', okx: 'OKX Wallet' };
+const announcedProviders = [];
+// EIP-6963 discovers several installed browser wallets without a third-party
+// service, API key, or WalletConnect project. Wallets that do not implement it
+// are still collected from the legacy window.ethereum provider list.
+window.addEventListener('eip6963:announceProvider', event => {
+  if (event.detail?.provider && !announcedProviders.includes(event.detail.provider)) announcedProviders.push(event.detail.provider);
+});
+window.dispatchEvent(new Event('eip6963:requestProvider'));
+const uniqueProviders = () => [...new Set([...announcedProviders, window.ethereum, ...(window.ethereum?.providers || [])].filter(Boolean))];
+function findWalletProvider(wallet) {
+  return uniqueProviders().find(provider => (
+    (wallet === 'metamask' && provider.isMetaMask && !provider.isRabby) ||
+    (wallet === 'coinbase' && provider.isCoinbaseWallet) ||
+    (wallet === 'rabby' && provider.isRabby) ||
+    (wallet === 'okx' && (provider.isOkxWallet || provider.isOKExWallet))
+  ));
+}
+function updateWalletChoices() {
+  document.querySelectorAll('[data-wallet]').forEach(button => {
+    const installed = Boolean(findWalletProvider(button.dataset.wallet));
+    button.disabled = !installed;
+    button.title = installed ? `Connect ${walletNames[button.dataset.wallet]}` : `${walletNames[button.dataset.wallet]} is not installed in this browser`;
+  });
+  walletStatus.textContent = uniqueProviders().length ? 'Choose an available wallet above.' : 'No supported browser wallet was detected. Install or unlock MetaMask, Coinbase Wallet, Rabby, or OKX Wallet, then refresh.';
+}
+function openWalletDialog() {
+  updateWalletChoices();
+  if (typeof walletDialog.showModal === 'function') walletDialog.showModal();
+  else alert('Open a supported browser wallet (MetaMask, Coinbase Wallet, Rabby, or OKX Wallet) and refresh this page.');
+}
+document.querySelector('#wallet-close').addEventListener('click', () => walletDialog.close());
+document.querySelectorAll('[data-wallet]').forEach(button => button.addEventListener('click', async () => {
+  const wallet = button.dataset.wallet;
+  const provider = findWalletProvider(wallet);
+  if (!provider) return;
+  activeProvider = provider;
+  walletDialog.close();
+  await connectWallet();
+}));
+async function connectWallet(refreshAssets = true) {
+  const provider = activeProvider || window.ethereum;
+  if (!provider) { openWalletDialog(); return; }
   try {
-    await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x2105' }] });
-    const [address] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x2105' }] });
+    const [address] = await provider.request({ method: 'eth_requestAccounts' });
+    const hadConnectedWallet = Boolean(connectedAddress);
+    const accountChanged = hadConnectedWallet && connectedAddress.toLowerCase() !== address.toLowerCase();
     connectedAddress = address;
     document.querySelectorAll('.wallet-button').forEach(item => item.textContent = `${address.slice(0, 6)}…${address.slice(-4)}`);
     document.querySelector('.status').textContent = 'BASE CONNECTED';
-    await loadWithdrawableAssets();
+    if (refreshAssets || accountChanged || !hadConnectedWallet) await loadWithdrawableAssets();
   } catch (error) { alert('Wallet connection was not completed.'); }
 }
-document.querySelectorAll('.wallet-button').forEach(button => button.addEventListener('click', connectWallet));
+document.querySelectorAll('.wallet-button').forEach(button => button.addEventListener('click', openWalletDialog));
 
 const apiBase = window.BASE_TEN_CONFIG?.apiBase || '/api';
 const post = async (path, payload) => {
   const route = path.replace(/^\/glider\/?/, '');
-  const response = await fetch(`${apiBase}/glider`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, route }) });
+  const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const endpoint = isLocal ? `${apiBase}/glider/${route}` : `${apiBase}/glider`;
+  const body = isLocal ? payload : { ...payload, route };
+  const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const result = await response.json();
   if (!response.ok || result.success === false) throw new Error(result.error?.message || result.error || 'Request failed');
   return result;
 };
+const logo = companyLogo;
 const knownAssets = Object.fromEntries(portfolio.map(([symbol, , name]) => [symbol.toLowerCase(), { symbol, name }]));
+Object.assign(knownAssets, {
+  nvdac: { ...knownAssets.nvdac, logo: logo('nvidia.com') },
+  aaplc: { ...knownAssets.aaplc, logo: logo('apple.com') },
+  googlc: { ...knownAssets.googlc, logo: logo('google.com') },
+  metac: { ...knownAssets.metac, logo: logo('meta.com') },
+  amznc: { ...knownAssets.amznc, logo: logo('amazon.com') },
+  msftc: { ...knownAssets.msftc, logo: logo('microsoft.com') },
+  mstrc: { ...knownAssets.mstrc, logo: logo('strategy.com') },
+  sndkc: { ...knownAssets.sndkc, logo: logo('sandisk.com') },
+  spcx: { ...knownAssets.spcx, logo: logo('spacex.com') },
+  tslac: { ...knownAssets.tslac, logo: logo('tesla.com') }
+});
 const knownAssetByAddress = {
   '0xb20000000000000000000078ee7ce2fe4908108c': knownAssets.nvdac,
   '0xb200000000000000000000c2e324d24d7eecd1fb': knownAssets.aaplc,
@@ -48,6 +140,25 @@ const knownAssetByAddress = {
   '0xb2000000000000000000007b9fcbd005511acbd5': knownAssets.spcx,
   '0xb2000000000000000000001e800a7f5189430cd': knownAssets.tslac
 };
+const usd = value => Number(value || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+function renderInvestmentValue(positions) {
+  const assets = positions.data?.assets || [];
+  const total = positions.data?.totalValueUsd || 0;
+  document.querySelector('#investment-value').textContent = usd(total);
+  document.querySelector('#tvl').textContent = usd(total);
+  document.querySelector('#asset-count').textContent = String(assets.filter(asset => BigInt(asset.balanceRaw || '0') > 0n).length);
+  document.querySelector('#portfolio-value-note').textContent = `Live Glider value · updated ${new Date(positions.data?.fetchedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+  const rows = document.querySelector('#holdings-rows');
+  const held = assets.filter(asset => BigInt(asset.balanceRaw || '0') > 0n);
+  if (!held.length) { rows.className = 'holdings-empty'; rows.textContent = 'No indexed assets yet. Deposits can take a few minutes to appear in Glider.'; return; }
+  rows.className = 'holdings-rows';
+  rows.innerHTML = held.map(asset => {
+    const contract = asset.assetId.split('erc20:')[1]?.toLowerCase();
+    const known = knownAssetByAddress[contract] || knownAssets[String(asset.symbol || '').toLowerCase()];
+    const icon = known?.logo || (String(asset.symbol).toUpperCase() === 'USDC' ? 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png?v=040' : 'https://www.google.com/s2/favicons?domain=glider.fi&sz=128');
+    return `<div class="holding-row"><span class="holding-asset"><img src="${icon}" alt="" /><b>${asset.symbol || 'Asset'}</b></span><span>${asset.balance || '0'}</span><span>${usd(asset.priceUsd)}</span><span class="pnl-unavailable">—</span><strong>${usd(asset.valueUsd)}</strong></div>`;
+  }).join('');
+}
 async function loadLiveStrategy() {
   try {
     const strategy = (await post('/glider/strategy', {})).data;
@@ -61,7 +172,8 @@ async function loadLiveStrategy() {
       const label = known?.symbol || asset.assetId.split('/').pop().slice(-12);
       const name = known?.name || asset.assetId;
       const weight = Number(asset.weight);
-      return `<article class="asset"><div class="asset-weight">${weight}%</div><div class="asset-ticker">${label}</div><div class="asset-name">${name}</div><div class="asset-bar" style="width:${Math.max(0, Math.min(100, weight))}%"></div></article>`;
+      const assetLogo = known?.logo ? `<img class="asset-logo" src="${known.logo}" alt="${name} logo" />` : `<img class="asset-logo" src="https://www.google.com/s2/favicons?domain=glider.fi&sz=128" alt="Asset logo" />`;
+      return `<article class="asset"><div class="asset-top">${assetLogo}<div class="asset-weight">${weight}%</div></div><div class="asset-ticker">${label}</div><div class="asset-name">${name}</div><div class="asset-bar" style="width:${Math.max(0, Math.min(100, weight))}%"></div></article>`;
     }).join('');
   } catch (error) {
     document.querySelector('#strategy-name').textContent = 'Glider strategy allocation';
@@ -71,6 +183,23 @@ async function loadLiveStrategy() {
 loadLiveStrategy();
 let portfolioId;
 const portfolioStorageKey = address => `baseTenPortfolioId:${address.toLowerCase()}:01KZY1G56YFYWKS8AH0PR1YMQX`;
+const activityStorageKey = address => `baseStock10Activity:${address.toLowerCase()}`;
+function saveActivity(type, detail, hash = '') {
+  if (!connectedAddress) return;
+  const items = JSON.parse(localStorage.getItem(activityStorageKey(connectedAddress)) || '[]');
+  items.unshift({ type, detail, hash, at: Date.now() });
+  localStorage.setItem(activityStorageKey(connectedAddress), JSON.stringify(items.slice(0, 30)));
+}
+function renderActivity(performance) {
+  const rows = document.querySelector('#activity-rows');
+  if (!rows) return;
+  const local = connectedAddress ? JSON.parse(localStorage.getItem(activityStorageKey(connectedAddress)) || '[]') : [];
+  const flows = (performance?.data?.points || []).filter(point => Number(point.cashFlowUsd || 0) !== 0).map(point => ({ type: Number(point.cashFlowUsd) > 0 ? 'Deposit indexed' : 'Withdrawal indexed', detail: `${Number(point.cashFlowUsd) > 0 ? '+' : '−'}${usd(Math.abs(Number(point.cashFlowUsd)))}`, at: new Date(`${point.date}T12:00:00Z`).getTime() }));
+  const activity = [...local, ...flows].sort((a, b) => b.at - a.at).slice(0, 20);
+  if (!activity.length) { rows.className = 'holdings-empty'; rows.textContent = 'No indexed activity yet. Deposits and withdrawals appear after Glider indexes them.'; return; }
+  rows.className = 'activity-rows';
+  rows.innerHTML = activity.map(item => `<div class="activity-row"><span class="activity-kind ${item.type.toLowerCase().includes('withdraw') ? 'negative' : ''}">${item.type}</span><span>${item.detail}</span><span>${new Date(item.at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span></div>`).join('');
+}
 
 async function loadWithdrawableAssets() {
   if (!connectedAddress) return;
@@ -86,6 +215,7 @@ async function loadWithdrawableAssets() {
     assetPicker.innerHTML = '<option>Invest USDC first</option>';
     submit.disabled = true;
     submit.textContent = 'Invest USDC before withdrawing';
+    withdrawMax.disabled = true;
     rebalanceButton.disabled = true;
     return;
   }
@@ -93,34 +223,57 @@ async function loadWithdrawableAssets() {
   try {
     document.querySelector('#withdraw-balance').textContent = 'Loading indexed portfolio balance…';
     const positions = await post('/glider/positions', { portfolioId });
+    renderInvestmentValue(positions);
+    let performance;
+    try {
+      performance = await post('/glider/performance', { portfolioId });
+      const allTime = performance.data?.summary?.windows?.find(item => item.window === 'all');
+      if (allTime?.percentChange != null) {
+        const change = Number(allTime.percentChange);
+        const node = document.querySelector('#portfolio-return');
+        node.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)}%`;
+        node.className = change >= 0 ? 'positive-return' : 'negative-return';
+      }
+    } catch { /* Glider needs indexed portfolio history before it can calculate return. */ }
+    renderActivity(performance);
     withdrawAssets = (positions.data.assets || []).filter(asset => asset.smartAccountId?.startsWith('eip155:8453:') && BigInt(asset.balanceRaw || '0') > 0n);
     if (!withdrawAssets.length) {
       assetPicker.innerHTML = '<option>Deposit is indexing — check again shortly</option>';
       document.querySelector('#withdraw-balance').textContent = 'Your transfer is not indexed yet. Glider may take a few minutes to show it.';
       submit.disabled = true;
       submit.textContent = 'No indexed assets to withdraw';
+      withdrawMax.disabled = true;
       return;
     }
+    const previousAssetId = assetPicker.value;
+    withdrawAssets.sort((a, b) => {
+      const aUsdc = String(a.symbol).toUpperCase() === 'USDC';
+      const bUsdc = String(b.symbol).toUpperCase() === 'USDC';
+      return Number(bUsdc) - Number(aUsdc);
+    });
     assetPicker.innerHTML = withdrawAssets.map(asset => `<option value="${asset.assetId}">${asset.symbol} — ${asset.balance} available</option>`).join('');
+    assetPicker.value = withdrawAssets.some(asset => asset.assetId === previousAssetId) ? previousAssetId : withdrawAssets[0].assetId;
     assetPicker.dispatchEvent(new Event('change'));
     submit.disabled = false;
+    withdrawMax.disabled = false;
     submit.textContent = 'Withdraw to my Base wallet';
-    const value = Number(positions.data.totalValueUsd || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
-    document.querySelector('.balance').textContent = value;
-    document.querySelector('#tvl').textContent = value;
   } catch (error) {
     submit.disabled = true;
     submit.textContent = 'Unable to load withdrawal balance';
+    withdrawMax.disabled = true;
     document.querySelector('#withdraw-balance').textContent = error.message || 'Unable to load portfolio positions.';
   }
 }
 
 document.querySelector('#withdraw-submit').addEventListener('click', async () => {
-  await connectWallet();
+  // Do not reload the picker here: reloading would clear the amount the user
+  // already entered. A first connection or a wallet change still loads assets.
+  await connectWallet(false);
   if (!connectedAddress || !portfolioId || !window.ethers) return;
   const asset = withdrawAssets.find(item => item.assetId === assetPicker.value);
   const amount = document.querySelector('#withdraw-amount').value.trim();
-  if (!asset || !amount) return alert('Choose an indexed asset and enter the amount to withdraw.');
+  if (!asset) return alert('No withdrawable asset is indexed yet. After depositing or rebalancing, wait for Glider to index the asset, then refresh this page.');
+  if (!amount) return alert(`Enter an amount of ${asset.symbol}, or press MAX to withdraw your full available balance.`);
   let amountRaw;
   try { amountRaw = ethers.parseUnits(amount, Number(asset.decimals)).toString(); }
   catch { return alert(`Enter a valid ${asset.symbol} amount.`); }
@@ -133,10 +286,11 @@ document.querySelector('#withdraw-submit').addEventListener('click', async () =>
     const typedData = prepared.data.typedData;
     const types = Object.fromEntries(Object.entries(typedData.types).filter(([key]) => key !== 'EIP712Domain'));
     button.textContent = 'Sign withdrawal in your wallet…';
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const provider = new ethers.BrowserProvider(activeProvider || window.ethereum);
     const signature = await (await provider.getSigner()).signTypedData(typedData.domain, types, typedData.message);
     button.textContent = 'Submitting withdrawal…';
     const result = await post('/glider/withdraw/submit', { portfolioId, message: typedData.message, signature });
+    saveActivity('Withdrawal submitted', `${amount} ${asset.symbol}`, result.data.operationId || '');
     button.textContent = 'Withdrawal submitted ✓';
     alert(`Withdrawal submitted. Glider is sending ${amount} ${asset.symbol} to your Base wallet. Operation: ${result.data.operationId}`);
     setTimeout(loadWithdrawableAssets, 4000);
@@ -162,7 +316,7 @@ document.querySelector('#invest-usdc').addEventListener('click', async () => {
   if (Number(amount) < 1) return alert('Minimum investment is 1 USDC.');
   if (!window.ethers) { alert('The wallet transaction library did not load. Refresh and try again.'); return; }
   try {
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const provider = new ethers.BrowserProvider(activeProvider || window.ethereum);
     const signer = await provider.getSigner();
     const button = document.querySelector('#invest-usdc');
     button.disabled = true;
@@ -176,7 +330,7 @@ document.querySelector('#invest-usdc').addEventListener('click', async () => {
           ? ethers.getBytes(signableMessage)
           : signableMessage
       );
-      const created = await post('/glider/create', { ...signatureData, signature, portfolioName: 'Base Ten' });
+      const created = await post('/glider/create', { ...signatureData, signature, portfolioName: 'BaseStock10' });
       portfolioId = created.data.portfolioId;
       localStorage.setItem(portfolioStorageKey(connectedAddress), portfolioId);
     }
@@ -196,6 +350,7 @@ document.querySelector('#invest-usdc').addEventListener('click', async () => {
     button.textContent = 'Confirming USDC transfer…';
     await funding.wait();
     const tx = funding.hash;
+    saveActivity('USDC deposit submitted', `${amount} USDC`, tx);
     button.textContent = 'Investment submitted ✓';
     document.querySelector('#rebalance-all').disabled = false;
     alert(`Your USDC was sent to your Glider Base account. It may take a short time to index before you can rebalance. Transaction: ${tx}`);
@@ -223,6 +378,7 @@ document.querySelector('#rebalance-all').addEventListener('click', async () => {
     button.textContent = 'Requesting Glider rebalance…';
     status.textContent = 'Glider is checking your portfolio and preparing the strategy execution.';
     const result = await post('/glider/rebalance', { portfolioId });
+    saveActivity('Glider rebalance requested', 'Strategy execution requested', result.data.operationId || '');
     button.textContent = 'Glider rebalance requested ✓';
     status.textContent = `Glider accepted the rebalance request. Operation: ${result.data.operationId || 'processing'}.`;
   } catch (error) {

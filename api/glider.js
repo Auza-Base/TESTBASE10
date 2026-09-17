@@ -57,6 +57,7 @@ module.exports = async function handler(req, res) {
       return res.json({ success: true, data: { destination: matched[1], tokenAmount: units(body.amount), tokenContractAddress: usdc } });
     }
     if (route === 'positions') return res.json(await glider(`/portfolios/${body.portfolioId}/positions`, undefined, 'GET'));
+    if (route === 'performance') return res.json(await glider(`/portfolios/${body.portfolioId}/performance`, undefined, 'GET'));
     if (route === 'rebalance') return res.json(await glider(`/portfolios/${body.portfolioId}/rebalance`, {}));
     if (route === 'withdraw/prepare') {
       if (!address(body.recipientAddress) || !body.assetId || !/^\d+$/.test(String(body.amountRaw || ''))) throw new Error('Choose a valid withdrawal asset and amount.');
