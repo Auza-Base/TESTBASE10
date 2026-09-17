@@ -47,6 +47,11 @@ const walletDialog = document.querySelector('#wallet-dialog');
 const walletStatus = document.querySelector('#wallet-status');
 let activeProvider;
 let connectedAddress;
+const baseNetwork = {
+  chainId: '0x2105', chainName: 'Base',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: ['https://mainnet.base.org'], blockExplorerUrls: ['https://basescan.org']
+};
 const walletNames = { metamask: 'MetaMask', coinbase: 'Coinbase Wallet', rabby: 'Rabby', okx: 'OKX Wallet' };
 const announcedProviders = [];
 // EIP-6963 discovers several installed browser wallets without a third-party
@@ -87,19 +92,33 @@ document.querySelectorAll('[data-wallet]').forEach(button => button.addEventList
   walletDialog.close();
   await connectWallet();
 }));
+async function switchToBase(provider) {
+  try {
+    await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: baseNetwork.chainId }] });
+  } catch (error) {
+    if (error?.code !== 4902) throw error;
+    await provider.request({ method: 'wallet_addEthereumChain', params: [baseNetwork] });
+  }
+}
 async function connectWallet(refreshAssets = true) {
   const provider = activeProvider || window.ethereum;
   if (!provider) { openWalletDialog(); return; }
   try {
-    await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x2105' }] });
+    // Most wallets require the account connection before they accept a network switch.
     const [address] = await provider.request({ method: 'eth_requestAccounts' });
+    await switchToBase(provider);
     const hadConnectedWallet = Boolean(connectedAddress);
     const accountChanged = hadConnectedWallet && connectedAddress.toLowerCase() !== address.toLowerCase();
     connectedAddress = address;
     document.querySelectorAll('.wallet-button').forEach(item => item.textContent = `${address.slice(0, 6)}…${address.slice(-4)}`);
     document.querySelector('.status').textContent = 'BASE CONNECTED';
     if (refreshAssets || accountChanged || !hadConnectedWallet) await loadWithdrawableAssets();
-  } catch (error) { alert('Wallet connection was not completed.'); }
+  } catch (error) {
+    const message = error?.code === 4001
+      ? 'Wallet connection was cancelled. Approve the wallet connection and Base network switch, then try again.'
+      : `Wallet connection failed: ${error?.message || 'Your wallet did not return an account.'}`;
+    alert(message);
+  }
 }
 document.querySelectorAll('.wallet-button').forEach(button => button.addEventListener('click', openWalletDialog));
 
@@ -164,7 +183,7 @@ async function loadLiveStrategy() {
     const strategy = (await post('/glider/strategy', {})).data;
     const assets = strategy.allocation?.assets || [];
     if (!assets.length) throw new Error('Strategy returned no allocation.');
-    document.querySelector('#strategy-name').textContent = strategy.name || 'Selected Glider strategy';
+    document.querySelector('#strategy-name').textContent = 'BASE 10';
     document.querySelector('#strategy-status').textContent = `Live allocation from Glider strategy ${strategy.strategyId}. Version ${strategy.version ?? 'current'}.`;
     grid.innerHTML = assets.map(asset => {
       const address = asset.assetId.split('erc20:')[1]?.toLowerCase();
@@ -176,7 +195,7 @@ async function loadLiveStrategy() {
       return `<article class="asset"><div class="asset-top">${assetLogo}<div class="asset-weight">${weight}%</div></div><div class="asset-ticker">${label}</div><div class="asset-name">${name}</div><div class="asset-bar" style="width:${Math.max(0, Math.min(100, weight))}%"></div></article>`;
     }).join('');
   } catch (error) {
-    document.querySelector('#strategy-name').textContent = 'Glider strategy allocation';
+    document.querySelector('#strategy-name').textContent = 'BASE 10';
     document.querySelector('#strategy-status').textContent = 'Your deposits still enroll using strategy 01KZY1G56YFYWKS8AH0PR1YMQX. Live display requires strategies:read permission on your Glider API key.';
   }
 }
