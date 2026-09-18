@@ -243,8 +243,8 @@ async function loadLeaderboard() {
     } else {
       rows.className = '';
       rows.innerHTML = listed.map(row => {
-        const contracts = (row.portfolioAddresses || []).map(item => `<a class="portfolio-contract" href="https://basescan.org/address/${item.address}" target="_blank" rel="noreferrer" title="${item.address}">${item.address.slice(0, 6)}…${item.address.slice(-4)} ↗</a>`).join('') || 'Pending';
-        return `<div class="leader-row"><span>#${row.rank}</span><span>${row.wallet}<small>${row.status === 'active' ? 'Active' : 'Not scheduled'} · ${row.portfolioCount} portfolio${row.portfolioCount === 1 ? '' : 's'}</small></span><span class="portfolio-contracts">${contracts}</span><span>${usd(row.valueUsd)}</span></div>`;
+        const contracts = (row.portfolioAddresses || []).map(item => `<a class="portfolio-contract" href="https://basescan.org/address/${item.address}" target="_blank" rel="noreferrer" title="View on BaseScan">${item.address} ↗</a>`).join('') || 'Pending';
+        return `<div class="leader-row"><span>#${row.rank}</span><span>${row.wallet}<small>${row.status === 'active' ? 'Active' : 'Not scheduled'} · ${row.portfolioCount} portfolio${row.portfolioCount === 1 ? '' : 's'}</small></span><span class="portfolio-contracts">${contracts}</span><span>${usd(row.valueUsd)}</span><strong class="tvl-share">${Number(row.tvlSharePercent || 0).toFixed(2)}%</strong></div>`;
       }).join('');
     }
     const updated = new Date(data.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });

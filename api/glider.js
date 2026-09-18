@@ -58,11 +58,12 @@ async function buildLeaderboard() {
     byWallet.set(row.wallet, current);
   });
   const rankedWallets = [...byWallet.values()].sort((a, b) => b.valueUsd - a.valueUsd);
+  const totalValueUsd = rankedWallets.reduce((sum, row) => sum + row.valueUsd, 0);
   const value = {
     portfolioCount: portfolios.length,
     walletCount: rankedWallets.length,
-    totalValueUsd: rankedWallets.reduce((sum, row) => sum + row.valueUsd, 0),
-    rows: rankedWallets.slice(0, 25).map((row, index) => ({ rank: index + 1, ...row })),
+    totalValueUsd,
+    rows: rankedWallets.slice(0, 25).map((row, index) => ({ rank: index + 1, tvlSharePercent: totalValueUsd ? (row.valueUsd / totalValueUsd) * 100 : 0, ...row })),
     updatedAt: new Date().toISOString()
   };
   leaderboardCache = { value, expiresAt: Date.now() + 60_000 };
