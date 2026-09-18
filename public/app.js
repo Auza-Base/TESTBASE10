@@ -45,6 +45,7 @@ withdrawMax.addEventListener('click', () => {
 
 const walletDialog = document.querySelector('#wallet-dialog');
 const walletStatus = document.querySelector('#wallet-status');
+const walletSearch = document.querySelector('#wallet-search');
 let activeProvider;
 let connectedAddress;
 const baseNetwork = {
@@ -58,10 +59,10 @@ const announcedProviders = [];
 // service, API key, or WalletConnect project. Wallets that do not implement it
 // are still collected from the legacy window.ethereum provider list.
 window.addEventListener('eip6963:announceProvider', event => {
-  if (event.detail?.provider && !announcedProviders.includes(event.detail.provider)) announcedProviders.push(event.detail.provider);
+  if (event.detail?.provider && !announcedProviders.some(item => item.provider === event.detail.provider)) announcedProviders.push(event.detail);
 });
 window.dispatchEvent(new Event('eip6963:requestProvider'));
-const uniqueProviders = () => [...new Set([...announcedProviders, window.ethereum, ...(window.ethereum?.providers || [])].filter(Boolean))];
+const uniqueProviders = () => [...new Set([...announcedProviders.map(item => item.provider), window.ethereum, ...(window.ethereum?.providers || [])].filter(Boolean))];
 function findWalletProvider(wallet) {
   return uniqueProviders().find(provider => (
     (wallet === 'metamask' && provider.isMetaMask && !provider.isRabby) ||
@@ -76,6 +77,17 @@ function updateWalletChoices() {
     button.disabled = !installed;
     button.title = installed ? `Connect ${walletNames[button.dataset.wallet]}` : `${walletNames[button.dataset.wallet]} is not installed in this browser`;
   });
+  // Add every other EIP-6963 wallet extension detected by the browser.
+  const options = document.querySelector('#wallet-options');
+  options.querySelectorAll('[data-discovered-wallet]').forEach(button => button.remove());
+  announcedProviders.forEach((item, index) => {
+    const provider = item.provider;
+    if (uniqueProviders().filter(candidate => candidate === provider).some(() => provider.isMetaMask || provider.isCoinbaseWallet || provider.isRabby || provider.isOkxWallet || provider.isOKExWallet)) return;
+    const button = document.createElement('button');
+    button.type = 'button'; button.dataset.discoveredWallet = String(index);
+    button.innerHTML = `<img class="wallet-icon" src="${item.info?.icon || 'https://www.google.com/s2/favicons?domain=walletconnect.com&sz=128'}" alt="" /><span>${item.info?.name || 'Browser wallet'}</span><small class="wallet-installed">● Installed</small>`;
+    options.insertBefore(button, options.querySelector('[data-walletconnect]'));
+  });
   walletStatus.textContent = uniqueProviders().length ? 'Choose an available wallet above.' : 'No supported browser wallet was detected. Install or unlock MetaMask, Coinbase Wallet, Rabby, or OKX Wallet, then refresh.';
 }
 function openWalletDialog() {
@@ -83,15 +95,23 @@ function openWalletDialog() {
   if (typeof walletDialog.showModal === 'function') walletDialog.showModal();
   else alert('Open a supported browser wallet (MetaMask, Coinbase Wallet, Rabby, or OKX Wallet) and refresh this page.');
 }
+walletSearch.addEventListener('input', () => {
+  const query = walletSearch.value.trim().toLowerCase();
+  document.querySelectorAll('#wallet-options button').forEach(button => {
+    button.hidden = Boolean(query) && !button.textContent.toLowerCase().includes(query);
+  });
+});
 document.querySelector('#wallet-close').addEventListener('click', () => walletDialog.close());
-document.querySelectorAll('[data-wallet]').forEach(button => button.addEventListener('click', async () => {
-  const wallet = button.dataset.wallet;
-  const provider = findWalletProvider(wallet);
+document.querySelector('#wallet-options').addEventListener('click', async event => {
+  const button = event.target.closest('button');
+  if (!button || button.disabled) return;
+  if (button.hasAttribute('data-walletconnect')) return alert('WalletConnect mobile connection needs a WalletConnect or Dynamic project configuration. Browser-extension wallets are available now.');
+  const provider = button.dataset.discoveredWallet != null ? announcedProviders[Number(button.dataset.discoveredWallet)]?.provider : findWalletProvider(button.dataset.wallet);
   if (!provider) return;
   activeProvider = provider;
   walletDialog.close();
   await connectWallet();
-}));
+});
 async function switchToBase(provider) {
   try {
     await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: baseNetwork.chainId }] });
@@ -144,7 +164,8 @@ Object.assign(knownAssets, {
   msftc: { ...knownAssets.msftc, logo: logo('microsoft.com') },
   mstrc: { ...knownAssets.mstrc, logo: logo('strategy.com') },
   sndkc: { ...knownAssets.sndkc, logo: logo('sandisk.com') },
-  spcx: { ...knownAssets.spcx, logo: logo('spacex.com') },
+  spcxc: { ...knownAssets.spcxc, logo: logo('spacex.com') },
+  spcx: { ...knownAssets.spcxc, logo: logo('spacex.com') },
   tslac: { ...knownAssets.tslac, logo: logo('tesla.com') }
 });
 const knownAssetByAddress = {
@@ -157,7 +178,7 @@ const knownAssetByAddress = {
   '0xb2000000000000000000004884b426556b92883d': knownAssets.mstrc,
   '0xb200000000000000000000397293cb8cda9a10c5': knownAssets.sndkc,
   '0xb2000000000000000000007b9fcbd005511acbd5': knownAssets.spcx,
-  '0xb2000000000000000000001e800a7f5189430cd': knownAssets.tslac
+  '0xb2000000000000000000001e800a7f5189430cd0': knownAssets.tslac
 };
 const usd = value => Number(value || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
 function renderInvestmentValue(positions) {
@@ -183,8 +204,10 @@ async function loadLiveStrategy() {
     const strategy = (await post('/glider/strategy', {})).data;
     const assets = strategy.allocation?.assets || [];
     if (!assets.length) throw new Error('Strategy returned no allocation.');
-    document.querySelector('#strategy-name').textContent = 'BASE 10';
+    document.querySelector('#strategy-name').textContent = 'Bitwise Mag7x';
     document.querySelector('#strategy-status').textContent = `Live allocation from Glider strategy ${strategy.strategyId}. Version ${strategy.version ?? 'current'}.`;
+    document.querySelector('#snapshot-holdings').textContent = String(assets.length);
+    document.querySelector('#snapshot-largest').textContent = `${Math.max(...assets.map(asset => Number(asset.weight) || 0))}%`;
     grid.innerHTML = assets.map(asset => {
       const address = asset.assetId.split('erc20:')[1]?.toLowerCase();
       const known = knownAssetByAddress[address];
@@ -195,7 +218,7 @@ async function loadLiveStrategy() {
       return `<article class="asset"><div class="asset-top">${assetLogo}<div class="asset-weight">${weight}%</div></div><div class="asset-ticker">${label}</div><div class="asset-name">${name}</div><div class="asset-bar" style="width:${Math.max(0, Math.min(100, weight))}%"></div></article>`;
     }).join('');
   } catch (error) {
-    document.querySelector('#strategy-name').textContent = 'BASE 10';
+    document.querySelector('#strategy-name').textContent = 'Bitwise Mag7x';
     document.querySelector('#strategy-status').textContent = 'Your deposits still enroll using strategy 01KZY1G56YFYWKS8AH0PR1YMQX. Live display requires strategies:read permission on your Glider API key.';
   }
 }
