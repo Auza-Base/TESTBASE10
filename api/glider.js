@@ -1,5 +1,6 @@
 const strategyId = '01KZY1G56YFYWKS8AH0PR1YMQX';
 const usdc = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+let leaderboardCache = { expiresAt: 0, value: null };
 
 function units(value) {
   const normalized = String(value ?? '').trim();
@@ -20,12 +21,42 @@ async function glider(endpoint, payload, method = 'POST') {
 }
 function address(value) { return /^0x[a-fA-F0-9]{40}$/.test(value || ''); }
 
+async function buildLeaderboard() {
+  if (leaderboardCache.value && Date.now() < leaderboardCache.expiresAt) return leaderboardCache.value;
+  const listed = await glider(`/portfolios?strategyId=${encodeURIComponent(strategyId)}&limit=200`, undefined, 'GET');
+  const portfolios = listed.data?.portfolios || [];
+  const rows = [];
+  // Keep concurrency modest: each position call may read several chains.
+  for (let start = 0; start < portfolios.length; start += 8) {
+    const batch = portfolios.slice(start, start + 8);
+    const result = await Promise.all(batch.map(async portfolio => {
+      try {
+        const positions = await glider(`/portfolios/${encodeURIComponent(portfolio.portfolioId)}/positions`, undefined, 'GET');
+        return { valueUsd: Number(positions.data?.totalValueUsd || 0), status: portfolio.schedule?.status || 'not scheduled' };
+      } catch {
+        return { valueUsd: 0, status: portfolio.schedule?.status || 'not scheduled' };
+      }
+    }));
+    rows.push(...result);
+  }
+  rows.sort((a, b) => b.valueUsd - a.valueUsd);
+  const value = {
+    portfolioCount: portfolios.length,
+    totalValueUsd: rows.reduce((sum, row) => sum + row.valueUsd, 0),
+    rows: rows.slice(0, 25).map((row, index) => ({ rank: index + 1, label: `Portfolio #${String(index + 1).padStart(2, '0')}`, ...row })),
+    updatedAt: new Date().toISOString()
+  };
+  leaderboardCache = { value, expiresAt: Date.now() + 60_000 };
+  return value;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ success: false, error: 'Method not allowed.' });
   try {
     const route = String(req.body?.route || req.query.route || '').replace(/^\//, '');
     const body = req.body || {};
     if (route === 'strategy') return res.json(await glider(`/strategies/${strategyId}`, undefined, 'GET'));
+    if (route === 'leaderboard') return res.json({ success: true, data: await buildLeaderboard() });
     if (route === 'signature') {
       if (!address(body.userAddress)) throw new Error('Connect a standard EOA wallet address.');
       const request = { ownerAccountId: `eip155:0:${body.userAddress}`, strategyId, chainIds: [8453], accountType: 'ECDSA' };

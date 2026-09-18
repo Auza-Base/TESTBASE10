@@ -223,6 +223,37 @@ async function loadLiveStrategy() {
   }
 }
 loadLiveStrategy();
+async function loadLeaderboard() {
+  const rows = document.querySelector('#leaderboard-rows');
+  const refresh = document.querySelector('#refresh-leaderboard');
+  if (!rows || !refresh) return;
+  try {
+    refresh.disabled = true;
+    refresh.textContent = 'Refreshing…';
+    const data = (await post('/glider/leaderboard', {})).data;
+    document.querySelector('#leaderboard-count').textContent = String(data.portfolioCount ?? 0);
+    document.querySelector('#leaderboard-tvl').textContent = `${usd(data.totalValueUsd)} TVL`;
+    const listed = data.rows || [];
+    if (!listed.length) {
+      rows.className = 'empty-leaders';
+      rows.textContent = 'No portfolios have been created for this strategy yet.';
+    } else {
+      rows.className = '';
+      rows.innerHTML = listed.map(row => `<div class="leader-row"><span>#${row.rank}</span><span>${row.label}<small>${row.status === 'active' ? 'Active' : 'Not scheduled'}</small></span><span>${usd(row.valueUsd)}</span></div>`).join('');
+    }
+    const updated = new Date(data.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    document.querySelector('#leaderboard-note').textContent = `Updated ${updated}. Wallet addresses, portfolio names, and individual holdings are never shown.`;
+  } catch (error) {
+    rows.className = 'empty-leaders';
+    rows.textContent = 'Community data is unavailable until the Glider API key has portfolios:read access.';
+    document.querySelector('#leaderboard-note').textContent = 'The leaderboard only displays anonymized data for this strategy.';
+  } finally {
+    refresh.disabled = false;
+    refresh.textContent = 'Refresh';
+  }
+}
+document.querySelector('#refresh-leaderboard')?.addEventListener('click', loadLeaderboard);
+loadLeaderboard();
 let portfolioId;
 const portfolioStorageKey = address => `baseTenPortfolioId:${address.toLowerCase()}:01KZY1G56YFYWKS8AH0PR1YMQX`;
 const activityStorageKey = address => `baseStock10Activity:${address.toLowerCase()}`;
