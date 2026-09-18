@@ -223,6 +223,7 @@ async function loadLiveStrategy() {
   }
 }
 loadLiveStrategy();
+let leaderboardData;
 async function loadLeaderboard() {
   const rows = document.querySelector('#leaderboard-rows');
   const refresh = document.querySelector('#refresh-leaderboard');
@@ -231,6 +232,7 @@ async function loadLeaderboard() {
     refresh.disabled = true;
     refresh.textContent = 'Refreshing…';
     const data = (await post('/glider/leaderboard', {})).data;
+    leaderboardData = data;
     document.querySelector('#leaderboard-count').textContent = String(data.walletCount ?? 0);
     document.querySelector('#leaderboard-count-label').textContent = `${data.portfolioCount ?? 0} portfolios · wallets`;
     document.querySelector('#leaderboard-tvl').textContent = `${usd(data.totalValueUsd)} TVL`;
@@ -240,7 +242,10 @@ async function loadLeaderboard() {
       rows.textContent = 'No portfolios have been created for this strategy yet.';
     } else {
       rows.className = '';
-      rows.innerHTML = listed.map(row => `<div class="leader-row"><span>#${row.rank}</span><span>${row.wallet}<small>${row.status === 'active' ? 'Active' : 'Not scheduled'} · ${row.portfolioCount} portfolio${row.portfolioCount === 1 ? '' : 's'}</small></span><span>${usd(row.valueUsd)}</span></div>`).join('');
+      rows.innerHTML = listed.map(row => {
+        const contracts = (row.portfolioAddresses || []).map(item => `<a class="portfolio-contract" href="https://basescan.org/address/${item.address}" target="_blank" rel="noreferrer" title="${item.address}">${item.address.slice(0, 6)}…${item.address.slice(-4)} ↗</a>`).join('') || 'Pending';
+        return `<div class="leader-row"><span>#${row.rank}</span><span>${row.wallet}<small>${row.status === 'active' ? 'Active' : 'Not scheduled'} · ${row.portfolioCount} portfolio${row.portfolioCount === 1 ? '' : 's'}</small></span><span class="portfolio-contracts">${contracts}</span><span>${usd(row.valueUsd)}</span></div>`;
+      }).join('');
     }
     const updated = new Date(data.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     document.querySelector('#leaderboard-note').textContent = `Updated ${updated}. Wallet labels are shortened; portfolio names and individual holdings are never shown.`;
@@ -254,6 +259,16 @@ async function loadLeaderboard() {
   }
 }
 document.querySelector('#refresh-leaderboard')?.addEventListener('click', loadLeaderboard);
+document.querySelector('#download-portfolio-addresses')?.addEventListener('click', () => {
+  const addresses = (leaderboardData?.rows || []).flatMap(row => row.portfolioAddresses || []);
+  if (!addresses.length) return alert('There are no Base portfolio contract addresses available to download yet.');
+  const csv = ['portfolio_contract_address,current_value_usd,status', ...addresses.map(item => `${item.address},${Number(item.valueUsd || 0).toFixed(2)},${item.status}`)].join('\n');
+  const file = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url; link.download = 'bitwise-mag7x-portfolio-addresses.csv'; link.click();
+  URL.revokeObjectURL(url);
+});
 loadLeaderboard();
 let portfolioId;
 const portfolioStorageKey = address => `baseTenPortfolioId:${address.toLowerCase()}:01KZY1G56YFYWKS8AH0PR1YMQX`;

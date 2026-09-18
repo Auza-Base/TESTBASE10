@@ -24,6 +24,11 @@ function maskOwnerAccount(ownerAccountId) {
   const wallet = String(ownerAccountId || '').split(':').pop();
   return address(wallet) ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Private wallet';
 }
+function basePortfolioAddress(portfolio) {
+  const account = (portfolio.smartAccounts || []).find(item => String(item.accountId || '').startsWith('eip155:8453:'));
+  const wallet = String(account?.accountId || '').split(':').pop();
+  return address(wallet) ? wallet : null;
+}
 
 async function buildLeaderboard() {
   if (leaderboardCache.value && Date.now() < leaderboardCache.expiresAt) return leaderboardCache.value;
@@ -36,18 +41,19 @@ async function buildLeaderboard() {
     const result = await Promise.all(batch.map(async portfolio => {
       try {
         const positions = await glider(`/portfolios/${encodeURIComponent(portfolio.portfolioId)}/positions`, undefined, 'GET');
-        return { wallet: maskOwnerAccount(portfolio.ownerAccountId), valueUsd: Number(positions.data?.totalValueUsd || 0), status: portfolio.schedule?.status || 'not scheduled' };
+        return { wallet: maskOwnerAccount(portfolio.ownerAccountId), portfolioAddress: basePortfolioAddress(portfolio), valueUsd: Number(positions.data?.totalValueUsd || 0), status: portfolio.schedule?.status || 'not scheduled' };
       } catch {
-        return { wallet: maskOwnerAccount(portfolio.ownerAccountId), valueUsd: 0, status: portfolio.schedule?.status || 'not scheduled' };
+        return { wallet: maskOwnerAccount(portfolio.ownerAccountId), portfolioAddress: basePortfolioAddress(portfolio), valueUsd: 0, status: portfolio.schedule?.status || 'not scheduled' };
       }
     }));
     rows.push(...result);
   }
   const byWallet = new Map();
   rows.forEach(row => {
-    const current = byWallet.get(row.wallet) || { wallet: row.wallet, valueUsd: 0, portfolioCount: 0, status: 'not scheduled' };
+    const current = byWallet.get(row.wallet) || { wallet: row.wallet, valueUsd: 0, portfolioCount: 0, portfolioAddresses: [], status: 'not scheduled' };
     current.valueUsd += row.valueUsd;
     current.portfolioCount += 1;
+    if (row.portfolioAddress) current.portfolioAddresses.push({ address: row.portfolioAddress, valueUsd: row.valueUsd, status: row.status });
     if (row.status === 'active') current.status = 'active';
     byWallet.set(row.wallet, current);
   });
