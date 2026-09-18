@@ -20,6 +20,10 @@ async function glider(endpoint, payload, method = 'POST') {
   return result;
 }
 function address(value) { return /^0x[a-fA-F0-9]{40}$/.test(value || ''); }
+function maskOwnerAccount(ownerAccountId) {
+  const wallet = String(ownerAccountId || '').split(':').pop();
+  return address(wallet) ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Private wallet';
+}
 
 async function buildLeaderboard() {
   if (leaderboardCache.value && Date.now() < leaderboardCache.expiresAt) return leaderboardCache.value;
@@ -32,18 +36,27 @@ async function buildLeaderboard() {
     const result = await Promise.all(batch.map(async portfolio => {
       try {
         const positions = await glider(`/portfolios/${encodeURIComponent(portfolio.portfolioId)}/positions`, undefined, 'GET');
-        return { valueUsd: Number(positions.data?.totalValueUsd || 0), status: portfolio.schedule?.status || 'not scheduled' };
+        return { wallet: maskOwnerAccount(portfolio.ownerAccountId), valueUsd: Number(positions.data?.totalValueUsd || 0), status: portfolio.schedule?.status || 'not scheduled' };
       } catch {
-        return { valueUsd: 0, status: portfolio.schedule?.status || 'not scheduled' };
+        return { wallet: maskOwnerAccount(portfolio.ownerAccountId), valueUsd: 0, status: portfolio.schedule?.status || 'not scheduled' };
       }
     }));
     rows.push(...result);
   }
-  rows.sort((a, b) => b.valueUsd - a.valueUsd);
+  const byWallet = new Map();
+  rows.forEach(row => {
+    const current = byWallet.get(row.wallet) || { wallet: row.wallet, valueUsd: 0, portfolioCount: 0, status: 'not scheduled' };
+    current.valueUsd += row.valueUsd;
+    current.portfolioCount += 1;
+    if (row.status === 'active') current.status = 'active';
+    byWallet.set(row.wallet, current);
+  });
+  const rankedWallets = [...byWallet.values()].sort((a, b) => b.valueUsd - a.valueUsd);
   const value = {
     portfolioCount: portfolios.length,
-    totalValueUsd: rows.reduce((sum, row) => sum + row.valueUsd, 0),
-    rows: rows.slice(0, 25).map((row, index) => ({ rank: index + 1, label: `Portfolio #${String(index + 1).padStart(2, '0')}`, ...row })),
+    walletCount: rankedWallets.length,
+    totalValueUsd: rankedWallets.reduce((sum, row) => sum + row.valueUsd, 0),
+    rows: rankedWallets.slice(0, 25).map((row, index) => ({ rank: index + 1, ...row })),
     updatedAt: new Date().toISOString()
   };
   leaderboardCache = { value, expiresAt: Date.now() + 60_000 };

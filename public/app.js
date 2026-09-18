@@ -231,7 +231,8 @@ async function loadLeaderboard() {
     refresh.disabled = true;
     refresh.textContent = 'Refreshing…';
     const data = (await post('/glider/leaderboard', {})).data;
-    document.querySelector('#leaderboard-count').textContent = String(data.portfolioCount ?? 0);
+    document.querySelector('#leaderboard-count').textContent = String(data.walletCount ?? 0);
+    document.querySelector('#leaderboard-count-label').textContent = `${data.portfolioCount ?? 0} portfolios · wallets`;
     document.querySelector('#leaderboard-tvl').textContent = `${usd(data.totalValueUsd)} TVL`;
     const listed = data.rows || [];
     if (!listed.length) {
@@ -239,10 +240,10 @@ async function loadLeaderboard() {
       rows.textContent = 'No portfolios have been created for this strategy yet.';
     } else {
       rows.className = '';
-      rows.innerHTML = listed.map(row => `<div class="leader-row"><span>#${row.rank}</span><span>${row.label}<small>${row.status === 'active' ? 'Active' : 'Not scheduled'}</small></span><span>${usd(row.valueUsd)}</span></div>`).join('');
+      rows.innerHTML = listed.map(row => `<div class="leader-row"><span>#${row.rank}</span><span>${row.wallet}<small>${row.status === 'active' ? 'Active' : 'Not scheduled'} · ${row.portfolioCount} portfolio${row.portfolioCount === 1 ? '' : 's'}</small></span><span>${usd(row.valueUsd)}</span></div>`).join('');
     }
     const updated = new Date(data.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    document.querySelector('#leaderboard-note').textContent = `Updated ${updated}. Wallet addresses, portfolio names, and individual holdings are never shown.`;
+    document.querySelector('#leaderboard-note').textContent = `Updated ${updated}. Wallet labels are shortened; portfolio names and individual holdings are never shown.`;
   } catch (error) {
     rows.className = 'empty-leaders';
     rows.textContent = 'Community data is unavailable until the Glider API key has portfolios:read access.';
