@@ -105,7 +105,7 @@ document.querySelector('#wallet-close').addEventListener('click', () => walletDi
 document.querySelector('#wallet-options').addEventListener('click', async event => {
   const button = event.target.closest('button');
   if (!button || button.disabled) return;
-  if (button.hasAttribute('data-walletconnect')) return alert('WalletConnect mobile connection needs a WalletConnect or Dynamic project configuration. Browser-extension wallets are available now.');
+  if (button.hasAttribute('data-walletconnect')) { walletStatus.style.display = 'block'; walletStatus.textContent = 'Mobile wallet connections need a WalletConnect or Dynamic project configuration. Browser-extension wallets are available now.'; return; }
   const provider = button.dataset.discoveredWallet != null ? announcedProviders[Number(button.dataset.discoveredWallet)]?.provider : findWalletProvider(button.dataset.wallet);
   if (!provider) return;
   activeProvider = provider;
