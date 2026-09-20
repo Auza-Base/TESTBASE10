@@ -3,6 +3,14 @@ const portfolio = [
   ['METAc', 9, 'Meta'], ['AMZNc', 11, 'Amazon'], ['MSFTc', 13, 'Microsoft'],
   ['MSTRc', 5, 'Strategy'], ['SNDKc', 3, 'SanDisk'], ['SPCXc', 5, 'SpaceX'], ['TSLAc', 7, 'Tesla']
 ];
+const appNotice = document.querySelector('#app-notice');
+const appNoticeMessage = document.querySelector('#app-notice-message');
+function alert(message) {
+  appNoticeMessage.textContent = String(message || 'Something needs your attention.');
+  if (!appNotice.open) appNotice.showModal();
+}
+document.querySelector('#app-notice-close').addEventListener('click', () => appNotice.close());
+appNotice.addEventListener('click', event => { if (event.target === appNotice) appNotice.close(); });
 const grid = document.querySelector('#allocation-grid');
 const localLogos = { NVDAc: 'nvidia.com', AAPLc: 'apple.com', GOOGLc: 'google.com', METAc: 'meta.com', AMZNc: 'amazon.com', MSFTc: 'microsoft.com', MSTRc: 'strategy.com', SNDKc: 'sandisk.com', SPCXc: 'spacex.com', TSLAc: 'tesla.com' };
 const companyLogo = domain => `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
