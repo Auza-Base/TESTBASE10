@@ -213,7 +213,7 @@ async function loadLiveStrategy() {
     const assets = strategy.allocation?.assets || [];
     if (!assets.length) throw new Error('Strategy returned no allocation.');
     document.querySelector('#strategy-name').textContent = 'Bitwise Mag7x';
-    document.querySelector('#strategy-status').textContent = `Live allocation from Glider strategy ${strategy.strategyId}. Version ${strategy.version ?? 'current'}.`;
+    document.querySelector('#strategy-status').textContent = 'Live allocation powered by Glider on Base.';
     document.querySelector('#snapshot-holdings').textContent = String(assets.length);
     document.querySelector('#snapshot-largest').textContent = `${Math.max(...assets.map(asset => Number(asset.weight) || 0))}%`;
     grid.innerHTML = assets.map(asset => {
