@@ -3,6 +3,13 @@ const portfolio = [
   ['METAc', 9, 'Meta'], ['AMZNc', 11, 'Amazon'], ['MSFTc', 13, 'Microsoft'],
   ['MSTRc', 5, 'Strategy'], ['SNDKc', 3, 'SanDisk'], ['SPCXc', 5, 'SpaceX'], ['TSLAc', 7, 'Tesla']
 ];
+const rewardAssetAddresses = {
+  NVDAc: '0xb20000000000000000000078ee7ce2fE4908108C', AAPLc: '0xb200000000000000000000C2e324d24d7eEcd1fb',
+  GOOGLc: '0xb2000000000000000000002D0BA3164cc74f58B7', METAc: '0xb2000000000000000000008bC8786B856E61707C',
+  AMZNc: '0xb200000000000000000000d9192b6B456483C2E8', MSFTc: '0xB200000000000000000000Ab99cFa739E253872B',
+  MSTRc: '0xb2000000000000000000004884b426556b92883d', SNDKc: '0xb200000000000000000000397293Cb8cda9a10c5',
+  SPCXc: '0xb2000000000000000000007b9fcbd005511aCBd5', TSLAc: '0xb2000000000000000000001e800a7f5189430cD0'
+};
 const appNotice = document.querySelector('#app-notice');
 const appNoticeMessage = document.querySelector('#app-notice-message');
 function alert(message) {
@@ -188,6 +195,12 @@ const knownAssetByAddress = {
   '0xb2000000000000000000007b9fcbd005511acbd5': knownAssets.spcx,
   '0xb2000000000000000000001e800a7f5189430cd0': knownAssets.tslac
 };
+const rewardStockRows = document.querySelector('#reward-stock-rows');
+if (rewardStockRows) rewardStockRows.innerHTML = portfolio.map(([symbol, weight, name], index) => {
+  const contract = rewardAssetAddresses[symbol];
+  const icon = localLogos[symbol] ? companyLogo(localLogos[symbol]) : 'https://www.google.com/s2/favicons?domain=glider.fi&sz=128';
+  return `<div class="reward-stock-row"><span>${String(index + 1).padStart(2, '0')}</span><span class="reward-stock-name"><img src="${icon}" alt="${name} logo" /><b>${symbol}</b><small>${name}</small></span><span>${weight}%</span><a href="https://basescan.org/address/${contract}" target="_blank" rel="noreferrer" title="${contract}">${contract.slice(0, 8)}…${contract.slice(-6)} ↗</a><span class="reward-live"><i></i> Live on Base</span></div>`;
+}).join('');
 const usd = value => Number(value || 0).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
 function renderInvestmentValue(positions) {
   const assets = positions.data?.assets || [];
