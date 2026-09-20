@@ -99,7 +99,7 @@ module.exports = async function handler(req, res) {
       return res.status(201).json(await glider('/enroll', enrollment));
     }
     if (route === 'deposit') {
-      if (!body.portfolioId || Number(body.amount) < 1 || !address(body.userWalletAddress)) throw new Error('Minimum investment is 1 USDC and a connected wallet is required.');
+      if (!body.portfolioId || Number(body.amount) < 25 || !address(body.userWalletAddress)) throw new Error('Minimum investment is 25 USDC and a connected wallet is required.');
       const portfolio = await glider(`/portfolios/${body.portfolioId}`, undefined, 'GET');
       const account = (portfolio.data?.smartAccounts || []).find(item => item.accountId?.startsWith('eip155:8453:'));
       const caip = account?.depositAccountId || account?.accountId;

@@ -423,7 +423,7 @@ document.querySelector('#invest-usdc').addEventListener('click', async () => {
     if (portfolioId) localStorage.setItem(portfolioStorageKey(connectedAddress), portfolioId);
   }
   const amount = document.querySelector('#amount').value;
-  if (Number(amount) < 1) return alert('Minimum investment is 1 USDC.');
+  if (Number(amount) < 25) return alert('Minimum investment is 25 USDC.');
   if (!window.ethers) { alert('The wallet transaction library did not load. Refresh and try again.'); return; }
   try {
     const provider = new ethers.BrowserProvider(activeProvider || window.ethereum);
