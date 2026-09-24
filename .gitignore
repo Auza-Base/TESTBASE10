@@ -1,2 +1,8 @@
 .env
 node_modules/
+.npm-cache/
+public/privy-wallet.js
+privy-local.*.log
+redesign-local.*.log
+deployment/
+redesign-backup-2026-09-24/

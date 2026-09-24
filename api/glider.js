@@ -20,6 +20,7 @@ async function glider(endpoint, payload, method = 'POST') {
   return result;
 }
 function address(value) { return /^0x[a-fA-F0-9]{40}$/.test(value || ''); }
+function identifier(value) { return /^[a-zA-Z0-9_-]{1,128}$/.test(String(value || '')); }
 function maskOwnerAccount(ownerAccountId) {
   const wallet = String(ownerAccountId || '').split(':').pop();
   return address(wallet) ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Private wallet';
@@ -76,6 +77,16 @@ module.exports = async function handler(req, res) {
     const route = String(req.body?.route || req.query.route || '').replace(/^\//, '');
     const body = req.body || {};
     if (route === 'strategy') return res.json(await glider(`/strategies/${strategyId}`, undefined, 'GET'));
+    if (route === 'fees') {
+      const strategyFees = await glider(`/strategies/${strategyId}/fees`, undefined, 'GET');
+      let swapBps = strategyFees.data?.swapBps;
+      if (swapBps == null) swapBps = (await glider('/tenant/fees', undefined, 'GET')).data?.swapBps;
+      return res.json({ success: true, data: { swapBps: typeof swapBps === 'number' ? swapBps : null } });
+    }
+    if (route === 'operation') {
+      if (!identifier(body.portfolioId) || !identifier(body.operationId)) throw new Error('Invalid operation reference.');
+      return res.json(await glider(`/portfolios/${encodeURIComponent(body.portfolioId)}/operations/${encodeURIComponent(body.operationId)}`, undefined, 'GET'));
+    }
     if (route === 'leaderboard') return res.json({ success: true, data: await buildLeaderboard() });
     if (route === 'signature') {
       if (!address(body.userAddress)) throw new Error('Connect a standard EOA wallet address.');

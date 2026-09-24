@@ -3,13 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BaseStock10 — On-chain stock portfolio</title>
+    <script>
+      (() => {
+        let theme;
+        try { theme = localStorage.getItem('bs10-theme'); } catch (_) {}
+        document.documentElement.dataset.theme = ['light', 'dark'].includes(theme) ? theme : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      })();
+    </script>
+    <title>BaseStock10</title>
     <link rel="icon" type="image/jpeg" href="https://pbs.twimg.com/profile_images/2099922210244943872/Aj3klXlT_400x400.jpg" />
     <link rel="apple-touch-icon" href="https://pbs.twimg.com/profile_images/2099922210244943872/Aj3klXlT_400x400.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="redesign.css" />
+    <link rel="stylesheet" href="enterprise.css" />
+    <link rel="stylesheet" href="theme.css" />
+    <link rel="stylesheet" href="polish.css" />
+    <link rel="stylesheet" href="transactions.css" />
+    <link rel="stylesheet" href="safety.css" />
   </head>
   <body>
     <div class="glow glow-one"></div><div class="glow glow-two"></div>
@@ -74,12 +87,12 @@
         <div class="leader-footer"><p class="leader-note" id="leaderboard-note">Wallet labels are shortened. Portfolio contract addresses are Base smart accounts, not personal wallet addresses.</p><div class="leader-actions"><button class="ghost compact-button" id="refresh-leaderboard" type="button">Refresh</button></div></div>
       </section>
       <section class="shell rewards" id="rewards">
-        <div class="rewards-copy"><p class="eyebrow">PROPOSED BASESTOCK REWARDS</p><h2>Hold BaseStock. Support on-chain stocks.</h2><p>BaseStock 10 is proposed as a token with a <b>2.5% tax</b> on every buy and sell. All tax collected would be distributed between BaseStock holders and people who invest in the stocks.</p><p class="plan-note">The token plan is separate from the Glider portfolio. It is not live yet.</p></div>
-        <div class="split-card"><div><span>25%</span><small>proposed reward share for users holding the stocks</small></div><div><span>70%</span><small>proposed reward share for $BaseStock holders</small></div><p><b>5% proposed allocation:</b> DEX fees, X rewards, and campaigns. BaseStock is not live and no tax is being collected. Eligibility, distribution timing, mechanics, and compliance requirements will be published before any launch.</p><a class="button reward-stocks-link" href="#reward-stocks">See 10 reward stocks <span>↓</span></a></div>
+        <div class="rewards-copy"><p class="eyebrow">PROPOSED BASESTOCK REWARDS · 1% FEE</p><h2>Hold BaseStock. Share the stock rewards.</h2><p><b>A 1% BaseStock fee</b> is proposed for rewards. The proposed reward pool is split between BaseStock holders and people holding the stock portfolio.</p><p class="plan-note">This is a proposed token plan, separate from the Glider portfolio. BaseStock is not live yet and rewards are not guaranteed.</p></div>
+        <div class="split-card"><div><span>20%</span><small>proposed reward share for people holding the stocks</small></div><div><span>80%</span><small>proposed reward share for $BaseStock token holders</small></div><p>Reward eligibility, snapshot timing, distribution mechanics, and compliance requirements will be published before launch.</p><a class="button reward-stocks-link" href="#reward-stocks">See 10 reward stocks <span>↓</span></a></div>
       </section>
       <section class="shell reward-eligibility" aria-labelledby="eligibility-title">
-        <div class="eligibility-intro"><p class="eyebrow">DAILY REWARD ELIGIBILITY · PROPOSED</p><h2 id="eligibility-title">Who can receive rewards?</h2><p>These rules are separate from the reward split above and can change as more people join.</p></div>
-        <div class="eligibility-cards"><article><span class="eligibility-number">0.05%</span><h3>BaseStock holders</h3><p>Hold more than 0.05% of the total $BaseStock supply to qualify for daily holder rewards.</p><small>The holding threshold may increase or decrease.</small></article><article><span class="eligibility-number">Top 200</span><h3>Stock investors</h3><p>Up to 200 portfolios that invest in the stocks can receive daily investor rewards, ranked by invested amount.</p><small>The number of rewarded portfolios may change as participation grows.</small></article></div>
+        <div class="eligibility-intro"><p class="eyebrow">DAILY REWARD PLAN · PROPOSED</p><h2 id="eligibility-title">Simple reward rules.</h2><p>There are two ways to qualify: hold <a href="https://x.com/search?q=%24BaseStock&amp;src=cashtag_click" target="_blank" rel="noreferrer">$BaseStock</a>, or hold stocks in your portfolio.</p></div>
+        <div class="eligibility-cards"><article><span class="eligibility-number">3 of 4</span><h3>Hold BaseStock</h3><p>We check four times each day. Hold $BaseStock in at least three checks to receive ten stock rewards in your wallet.</p><small>Rewards are proposed to be sent every 24 hours.</small></article><article><span class="eligibility-number">1 check</span><h3>Hold your stocks</h3><p>We check once each day. If you hold portfolio stocks at that time, you can qualify for USDC rewards.</p><small>The check time changes daily.</small></article><article><span class="eligibility-number">8 stocks</span><h3>Your portfolio</h3><p>Each day, available USDC is converted into the current eight-stock portfolio.</p><small>The reference basket advertises a 10% Coinbase boosted APR. Terms apply.</small></article></div>
       </section>
       <section class="shell reward-stocks" id="reward-stocks" aria-labelledby="reward-stocks-title">
         <div class="reward-stocks-heading"><div><p class="eyebrow">BASESTOCK REWARD BASKET</p><h2 id="reward-stocks-title">The ten stocks</h2><p>Configured Base stock tokens for the proposed reward basket. Each contract links to BaseScan.</p></div><span class="reward-basket-status"><i></i> Base mainnet</span></div>
@@ -88,14 +101,18 @@
       </section>
       <section class="shell how" id="how">
         <div class="how-heading"><div><p class="eyebrow">HOW BASESTOCK10 WORKS</p><h2>One wallet. One Glider account. Eight-stock exposure.</h2></div><p>BaseStock10 is a non-custodial interface for a Glider-managed Base portfolio. You approve every wallet transaction; the app never holds your wallet keys.</p></div>
-        <div class="steps detailed-steps"><article><span>01 · CONNECT</span><h3>Connect your wallet</h3><p>Connect a Base wallet. Your wallet uses one Glider account for this strategy.</p></article><article><span>02 · FUND</span><h3>Invest USDC</h3><p>Send USDC to the Glider Base account created for your wallet.</p></article><article><span>03 · REBALANCE</span><h3>Follow the basket</h3><p>After indexing, ask Glider to rebalance into the current eight-stock basket.</p></article><article><span>04 · TRACK & WITHDRAW</span><h3>Stay in control</h3><p>See your value and holdings, then withdraw available indexed assets when you want.</p></article><article><span>05 · REWARDS</span><h3>Know the reward plan</h3><p>The proposed BaseStock plan shares future token fees with stock holders, BaseStock holders, and community campaigns. The full split is above.</p></article></div>
+        <div class="steps detailed-steps"><article><span>01 · CONNECT</span><h3>Connect your wallet</h3><p>Connect a Base wallet. Your wallet uses one Glider account for this strategy.</p></article><article><span>02 · FUND</span><h3>Invest USDC</h3><p>Send USDC to the Glider Base account created for your wallet.</p></article><article><span>03 · REBALANCE</span><h3>Follow the basket</h3><p>After indexing, ask Glider to rebalance into the current eight-stock basket.</p></article><article><span>04 · TRACK & WITHDRAW</span><h3>Stay in control</h3><p>See your value and holdings, then withdraw available indexed assets when you want.</p></article><article><span>05 · REWARDS</span><h3>Meet the snapshots</h3><p>The proposed BaseStock plan uses four daily holder snapshots and one daily stock-holder snapshot. See the full reward rules above.</p></article></div>
       </section>
     </main>
     <footer class="shell"><span>BASESTOCK10</span><span>Non-custodial portfolio interface · Base mainnet</span><span class="footer-social"><a href="https://x.com/BaseStock10" target="_blank" rel="noreferrer" aria-label="Base Stock 10 on X">𝕏 BaseStock10</a><a href="https://x.com/_Auza_" target="_blank" rel="noreferrer" aria-label="Founder Auza on X">𝕏 Founder Auza</a></span><span>Not investment advice</span></footer>
-    <dialog class="wallet-dialog" id="wallet-dialog" aria-labelledby="wallet-dialog-title"><div class="wallet-dialog-head"><h2 id="wallet-dialog-title">Log in or sign up</h2><button class="wallet-close" id="wallet-close" type="button" aria-label="Close wallet selector">×</button></div><label class="wallet-search"><span>⌕</span><input id="wallet-search" type="search" placeholder="Search through available wallets…" autocomplete="off" /></label><div class="wallet-options" id="wallet-options"><button type="button" data-wallet="rabby"><img class="wallet-icon" src="https://www.google.com/s2/favicons?domain=rabby.io&sz=128" alt="" /><span>Rabby</span><small class="wallet-installed">● Installed</small></button><button type="button" data-wallet="okx"><img class="wallet-icon" src="https://www.google.com/s2/favicons?domain=okx.com&sz=128" alt="" /><span>OKX Wallet</span><small class="wallet-installed">● Installed</small></button><button type="button" data-wallet="metamask"><img class="wallet-icon" src="https://www.google.com/s2/favicons?domain=metamask.io&sz=128" alt="" /><span>MetaMask</span><small class="wallet-installed">● Installed</small></button><button type="button" data-wallet="coinbase"><img class="wallet-icon coinbase-wallet-logo" src="coinbase-wallet-logo.png" alt="Coinbase Wallet" /><span>Coinbase Wallet</span><small class="wallet-installed">● Installed</small></button><button type="button" data-walletconnect><span class="wallet-icon walletconnect-icon">◇</span><span>WalletConnect</span><small>Mobile wallets</small></button></div><p class="wallet-status" id="wallet-status">Choose an installed wallet to connect on Base.</p><footer class="wallet-powered">Powered by <span>◆</span> dynamic</footer></dialog>
+    <div id="privy-root"></div>
     <dialog class="app-notice" id="app-notice" aria-labelledby="app-notice-title"><div class="app-notice-icon">i</div><div><p class="eyebrow" id="app-notice-title">BASESTOCK10</p><p id="app-notice-message"></p></div><button class="button" id="app-notice-close" type="button">Got it</button></dialog>
     <script src="config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
     <script src="app.js"></script>
+    <script src="redesign.js"></script>
+    <script src="safety-core.js"></script>
+    <script src="safety.js"></script>
+    <script defer src="bs10-connect.js"></script>
   </body>
 </html>

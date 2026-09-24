@@ -1,0 +1,16 @@
+{
+  "name": "basestock10",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node build-standalone.js",
+    "test": "node --test --test-isolation=none tests/*.test.cjs"
+  },
+  "dependencies": {
+    "@privy-io/react-auth": "3.45.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "viem": "^2.0.0"
+  },
+  "devDependencies": { "esbuild": "^0.25.0" }
+}
